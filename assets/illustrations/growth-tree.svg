@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" fill="none" role="img" aria-label="成長・学びをイメージしたライン画イラスト">
+  <line x1="0" y1="280" x2="300" y2="280" stroke="#0D233A" stroke-width="1.5"/>
+  <line x1="150" y1="280" x2="150" y2="160" stroke="#0D233A" stroke-width="2"/>
+  <line x1="150" y1="220" x2="100" y2="170" stroke="#0D233A" stroke-width="1.5"/>
+  <line x1="150" y1="200" x2="200" y2="150" stroke="#0D233A" stroke-width="1.5"/>
+  <line x1="150" y1="170" x2="120" y2="110" stroke="#0D233A" stroke-width="1.5"/>
+  <line x1="150" y1="170" x2="180" y2="100" stroke="#0D233A" stroke-width="1.5"/>
+  <g fill="#FAF9F6" stroke="#0D233A" stroke-width="1.5">
+    <circle cx="150" cy="160" r="10"/>
+    <circle cx="100" cy="170" r="8"/>
+    <circle cx="200" cy="150" r="8"/>
+    <circle cx="120" cy="110" r="10"/>
+    <circle cx="180" cy="100" r="10"/>
+  </g>
+  <g fill="#C7A86D">
+    <circle cx="150" cy="160" r="3"/>
+    <circle cx="100" cy="170" r="3"/>
+    <circle cx="200" cy="150" r="3"/>
+    <circle cx="120" cy="110" r="3"/>
+    <circle cx="180" cy="100" r="3"/>
+  </g>
+</svg>
