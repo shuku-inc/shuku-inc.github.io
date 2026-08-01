@@ -98,10 +98,11 @@
   #hint{ font-size:11px; color:#8a91c4; letter-spacing:1px; }
 
   /* 移動用の仮想スティック。常に円が見えている状態にし(押していないときは
-     決まった位置に置く)、指を置くとその位置にスッと移動する。 */
+     決まった位置に置く)、指を置くとその位置にスッと移動する。
+     大きさはジャンプ/ファイヤーボタン(.actionBtn)と統一(66px)。 */
   #touchStick{
-    position:absolute; width:110px; height:110px;
-    margin-left:-55px; margin-top:-55px;
+    position:absolute; width:66px; height:66px;
+    margin-left:-33px; margin-top:-33px;
     border-radius:50%;
     border:3px solid rgba(255,255,255,.55);
     background:rgba(0,0,0,.25);
@@ -111,8 +112,8 @@
   }
   #touchStick .knob{
     position:absolute; left:50%; top:50%;
-    width:46px; height:46px;
-    margin-left:-23px; margin-top:-23px;
+    width:28px; height:28px;
+    margin-left:-14px; margin-top:-14px;
     border-radius:50%;
     background:rgba(255,255,255,.75);
     transition:transform .08s ease;
@@ -164,7 +165,8 @@
      Androidなど画面回転ロックに対応している場合は実際に横向きになるため、
      その場合はこのmedia queryの条件(縦向き)自体が成立せず適用されない。 */
   @media (orientation:portrait){
-    html:fullscreen #app, html:-webkit-full-screen #app{
+    html:fullscreen #app, html:-webkit-full-screen #app,
+    html.pseudo-fullscreen #app{
       position:fixed; top:0; left:100%;
       width:100vh; height:100vw;
       max-width:none;
@@ -518,38 +520,61 @@ bindHold(document.getElementById('btnJump'), ()=>input.jump=true, ()=>{input.jum
 /* ---------------------------------------------------------------
    全画面表示ボタン（PC/スマホ共通）
    ・YouTubeのように、ボタン一つで全画面表示に切り替える。
-   ・全画面化と同時に、対応している端末では横向き固定を試みる
-     (Android Chrome等)。iOS Safariは画面回転ロックAPI自体が
-     無いため、その場合は下のCSS(@media (orientation:portrait))で
-     疑似的に画面を90度回転させて横画面らしく見せる。
+   ・iOS Safariは「ブラウザ標準の全画面API(requestFullscreen)」が
+     動画以外の要素には対応していないため、その方法だけに頼ると
+     iPhoneでボタンが機能しなくなる。
+   ・そのため「疑似全画面」を主な方式にする：このゲームはiframeで
+     埋め込まれている前提なので、埋め込み元(event/index.html)へ
+     postMessageで通知し、埋め込み元の側でiframe自体をCSSで画面
+     いっぱい(position:fixed)に広げてもらう。これはOSの許可がいらず
+     どのブラウザでも確実に効く。
+   ・あわせて、対応している環境ではブラウザ標準の全画面API・画面回転
+     ロックAPIも「ダメ元」で呼んでおく(使えれば、よりネイティブに近い
+     全画面体験になる。使えなくても疑似全画面がフォールバックになる)。
+   ・端末を回転できない場合(iOS等)は、下のCSS(@media (orientation:portrait))
+     で画面自体を90度回転させ、横画面らしく見せる。
 --------------------------------------------------------------- */
 const fsBtn = document.getElementById('fsBtn');
+let pseudoFullscreen = false;
+
 function isFullscreenNow(){
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
-async function enterFullscreen(){
-  const el = document.documentElement;
-  try{
-    if(el.requestFullscreen) await el.requestFullscreen();
-    else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-  }catch(err){ /* ユーザー操作起点でない等の理由で拒否された場合は何もしない */ }
-  try{
-    if(screen.orientation && screen.orientation.lock){
-      await screen.orientation.lock('landscape');
-    }
-  }catch(err){ /* 画面回転ロック非対応(iOS等) → CSSの疑似回転にフォールバック */ }
+function notifyParentFullscreen(on){
+  try{ window.parent.postMessage({ type:'shuku-dino-fullscreen', value: on }, '*'); }catch(err){}
 }
-function exitFullscreenNow(){
-  if(document.exitFullscreen) document.exitFullscreen();
-  else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+function setPseudoFullscreen(on){
+  pseudoFullscreen = on;
+  document.documentElement.classList.toggle('pseudo-fullscreen', on);
+  notifyParentFullscreen(on);
+  syncFsBtnIcon();
+
+  if(on){
+    // ブラウザ標準のFullscreen APIが使える環境ではあわせて呼んでおく(失敗しても無視)
+    const el = document.documentElement;
+    try{
+      const p = el.requestFullscreen ? el.requestFullscreen() : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null);
+      if(p && p.catch) p.catch(()=>{});
+    }catch(err){}
+    try{
+      if(screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(()=>{});
+    }catch(err){}
+  } else {
+    try{
+      if(document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+      else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }catch(err){}
+    try{
+      if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+    }catch(err){}
+  }
 }
-fsBtn.addEventListener('click', ()=>{
-  if(isFullscreenNow()) exitFullscreenNow();
-  else enterFullscreen();
-});
-function syncFsBtnIcon(){ fsBtn.textContent = isFullscreenNow() ? '⤡' : '⛶'; }
-document.addEventListener('fullscreenchange', syncFsBtnIcon);
-document.addEventListener('webkitfullscreenchange', syncFsBtnIcon);
+fsBtn.addEventListener('click', ()=> setPseudoFullscreen(!pseudoFullscreen));
+
+function syncFsBtnIcon(){ fsBtn.textContent = pseudoFullscreen ? '⤡' : '⛶'; }
+// ESCキー等でブラウザ標準の全画面だけが先に解除された場合は、疑似全画面側も合わせて解除する
+document.addEventListener('fullscreenchange', ()=>{ if(!isFullscreenNow() && pseudoFullscreen) setPseudoFullscreen(false); });
+document.addEventListener('webkitfullscreenchange', ()=>{ if(!isFullscreenNow() && pseudoFullscreen) setPseudoFullscreen(false); });
 
 /* ---------------------------------------------------------------
    スマホ等タッチ端末むけの操作
@@ -567,11 +592,13 @@ document.addEventListener('webkitfullscreenchange', syncFsBtnIcon);
      移動スティックが拾うタッチは常に「プレイ中の画面操作」だけになる。
 --------------------------------------------------------------- */
 const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+let syncTouchControlsVisibility = null; // タッチ端末のときだけ中身が入る(下で代入)。毎フレーム呼び出す
 
 if(isTouchDevice){
   document.getElementById('controls').classList.add('hidden');
   document.getElementById('hint').classList.add('hidden');
-  document.getElementById('touchActions').classList.remove('hidden');
+  // タッチ操作用UI(スティック/ジャンプ/ファイヤー)は、タイトル画面の間は隠しておき
+  // スタートしてから表示する。実際の表示切り替えはloop()内のsyncTouchControlsVisibility()で行う。
 
   // タイトル画面の説明文を、キーボード操作前提の文言からタッチ操作向けに差し替える
   document.getElementById('titleHint').innerHTML =
@@ -584,7 +611,7 @@ if(isTouchDevice){
   const stick = document.getElementById('touchStick');
   const stickKnob = stick.querySelector('.knob');
   const STICK_DEADZONE = 12; // px。これ未満のズレは「動かしていない」扱い
-  const STICK_MAX = 46;      // px。スティックの見た目上の可動範囲
+  const STICK_MAX = 18;      // px。スティックの見た目上の可動範囲(リング縮小に合わせて調整)
 
   let moveTouchId = null, moveStartX = 0, moveStartY = 0;
 
@@ -605,9 +632,18 @@ if(isTouchDevice){
     stickKnob.style.transform = `translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px)`;
   }
 
-  stick.classList.remove('hidden');
-  placeStickAtRest();
+  placeStickAtRest(); // 表示前の位置決めだけ先にしておく(表示自体はまだしない)
   window.addEventListener('resize', ()=>{ if(moveTouchId === null) placeStickAtRest(); });
+
+  // プレイ中(state==='playing')だけスティック/ジャンプボタンを表示し、
+  // ファイヤーボタンはさらに「ファイヤーブレスを取得した後(player.hasFire)」だけ表示する。
+  // 状態が毎フレーム変わりうるので、メインループから毎フレーム呼び出して同期する。
+  syncTouchControlsVisibility = function(){
+    const playing = (state === 'playing');
+    stick.classList.toggle('hidden', !playing);
+    document.getElementById('touchActions').classList.toggle('hidden', !playing);
+    document.getElementById('btnFireTouch').classList.toggle('hidden', !player.hasFire);
+  };
 
   canvas.addEventListener('touchstart', e=>{
     e.preventDefault();
@@ -1374,6 +1410,7 @@ function loop(ts){
 
   update(dt);
   draw();
+  if(syncTouchControlsVisibility) syncTouchControlsVisibility();
   requestAnimationFrame(loop);
 }
 

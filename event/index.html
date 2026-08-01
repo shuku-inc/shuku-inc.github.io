@@ -206,5 +206,21 @@
   </footer>
 
   <script src="../js/main.js"></script>
+  <script>
+    // 埋め込みゲーム(iframe)からの「全画面にしたい/戻したい」通知を受け取り、
+    // iframeそのものを画面いっぱいに広げる(iOS Safari等、ブラウザの
+    // 標準全画面APIが使えない環境でも確実に効く疑似全画面表示)。
+    // ※ .game-embedをDOM上で動かす(re-parentする)とiframeが再読み込みされ
+    //   ゲームの進行状況が失われてしまうため、要素は動かさずクラス切り替えのみで
+    //   対応する(祖先のtransform対策はCSS側の:has()で行う)。
+    window.addEventListener('message', function(e){
+      if(!e.data || e.data.type !== 'shuku-dino-fullscreen') return;
+      var wrap = document.querySelector('.game-embed');
+      if(!wrap) return;
+      var on = !!e.data.value;
+      wrap.classList.toggle('is-pseudo-fullscreen', on);
+      document.body.classList.toggle('game-fullscreen-lock', on);
+    });
+  </script>
 </body>
 </html>

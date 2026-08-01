@@ -493,6 +493,43 @@ ul {
   }
 }
 
+/* ゲーム内の全画面ボタンが押されたときの「疑似全画面」表示。
+   iOS Safari等、ブラウザ標準の全画面APIが効かない環境でも確実に
+   画面いっぱいに表示するため、iframeごとposition:fixedで最前面に広げる。 */
+.game-embed.is-pseudo-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  z-index: 9999;
+  background: #000;
+}
+
+.game-embed.is-pseudo-fullscreen iframe {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+/* .game-embedの祖先である.reveal(スクロール表示アニメーション)にtransformが
+   残っていると、position:fixedの基準がその祖先になってしまい画面全体に広がらない。
+   疑似全画面中だけ.revealのtransformを打ち消す。 */
+.reveal:has(.game-embed.is-pseudo-fullscreen) {
+  /* transitionをそのままにすると、transformがnoneになりきるまでの間
+     (約0.6秒)position:fixedの基準がこの要素のままになってしまうため、
+     transitionそのものも無効化して即座に切り替える */
+  transform: none !important;
+  transition: none !important;
+}
+
+/* 疑似全画面表示中は、背後のページがスクロールしないようにする */
+body.game-fullscreen-lock {
+  overflow: hidden;
+}
+
 /* ------------------------------------------------------------
    地図埋め込み（会場）
    ------------------------------------------------------------ */
