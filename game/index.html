@@ -60,8 +60,11 @@
   }
   .hidden{ display:none !important; }
   .overlay h2{
-    font-size:28px; margin:0; color:var(--accent);
+    /* 画面幅に応じて自動で縮む可変フォントサイズ。狭い画面で不格好に2行折り返すのを防ぐ */
+    font-size:clamp(16px, 6vw, 28px);
+    margin:0; color:var(--accent);
     text-shadow:3px 3px 0 #000;
+    white-space:nowrap;
   }
   .overlay p{ margin:0; font-size:13px; line-height:1.8; color:#cfd4ff; }
   .btn{
@@ -94,28 +97,80 @@
   .padBtn:active{ transform:translateY(3px); box-shadow:0 1px 0 #000; }
   #hint{ font-size:11px; color:#8a91c4; letter-spacing:1px; }
 
-  /* タッチ操作時に表示する、指に追従する仮想スティック(移動用)の見た目 */
+  /* 移動用の仮想スティック。常に円が見えている状態にし(押していないときは
+     決まった位置に置く)、指を置くとその位置にスッと移動する。 */
   #touchStick{
     position:absolute; width:110px; height:110px;
     margin-left:-55px; margin-top:-55px;
     border-radius:50%;
-    border:3px solid rgba(255,255,255,.5);
+    border:3px solid rgba(255,255,255,.55);
     background:rgba(0,0,0,.25);
     pointer-events:none; /* 触っても反応させない(裏のcanvasにタッチを渡すため) */
     z-index:50;
+    transition:left .12s ease, top .12s ease;
   }
   #touchStick .knob{
     position:absolute; left:50%; top:50%;
     width:46px; height:46px;
     margin-left:-23px; margin-top:-23px;
     border-radius:50%;
-    background:rgba(255,255,255,.7);
+    background:rgba(255,255,255,.75);
+    transition:transform .08s ease;
   }
+
+  /* ジャンプ／ファイヤーブレスの操作ボタン(スマホ用)。右下にまとめて配置し、
+     色とアイコンをはっきり分けてどちらのボタンか一目でわかるようにする。 */
+  #touchActions{
+    position:absolute; right:14px; bottom:14px;
+    display:flex; align-items:flex-end; gap:14px;
+    z-index:50;
+  }
+  .actionBtn{
+    width:66px; height:66px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px; color:#fff;
+    background:rgba(34,53,31,.8);
+    border:3px solid rgba(255,255,255,.55);
+    box-shadow:0 4px 0 rgba(0,0,0,.5);
+    user-select:none;
+  }
+  .actionBtn:active{ transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.5); }
+  .actionBtn.fire{
+    background:rgba(232,114,44,.85);
+    border-color:rgba(255,204,140,.85);
+  }
+
+  /* 全画面表示の切り替えボタン(YouTubeのようにゲーム画面の隅に置く) */
+  #fsBtn{
+    position:absolute; top:8px; right:8px; z-index:60;
+    width:34px; height:34px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.5); color:#fff;
+    border:2px solid rgba(255,255,255,.55);
+    font-size:16px; line-height:1;
+    font-family:inherit; cursor:pointer; padding:0;
+  }
+  #fsBtn:active{ transform:translateY(1px); }
 
   /* スマホ幅では見出しを消して、その分ゲーム画面(#stage)を大きく表示する */
   @media (max-width:640px){
     h1{ display:none; }
     #app{ padding:4px; gap:6px; }
+    .overlay{ padding:14px; }
+  }
+
+  /* 全画面表示になったとき、端末が縦向きのままなら(=iOS等で画面回転ロックが
+     使えない場合)、CSSの回転で疑似的に横画面表示にする。
+     Androidなど画面回転ロックに対応している場合は実際に横向きになるため、
+     その場合はこのmedia queryの条件(縦向き)自体が成立せず適用されない。 */
+  @media (orientation:portrait){
+    html:fullscreen #app, html:-webkit-full-screen #app{
+      position:fixed; top:0; left:100%;
+      width:100vh; height:100vw;
+      max-width:none;
+      transform-origin:0 0;
+      transform:rotate(90deg);
+    }
   }
 </style>
 </head>
@@ -125,10 +180,15 @@
   <div id="stage">
     <canvas id="game" width="960" height="540"></canvas>
     <div id="touchStick" class="hidden"><div class="knob"></div></div>
+    <div id="touchActions" class="hidden">
+      <div class="actionBtn fire" id="btnFireTouch" title="ファイヤーブレス">🔥</div>
+      <div class="actionBtn" id="btnJumpTouch" title="ジャンプ">⤴</div>
+    </div>
+    <button type="button" id="fsBtn" title="全画面表示">⛶</button>
 
     <div id="titleScreen" class="overlay">
       <h2>きょうりゅうアドベンチャー</h2>
-      <p>← → で うごく　　↑ / SPACE で ジャンプ<br>ENTER で ファイヤーブレス！　てきの宇宙人をふんでやっつけろ！　たまごの巣にタッチでゴール！</p>
+      <p id="titleHint">← → で うごく　　↑ / SPACE で ジャンプ<br>ENTER で ファイヤーブレス！　てきの宇宙人をふんでやっつけろ！　たまごの巣にタッチでゴール！</p>
       <button class="btn" id="startBtn">スタート</button>
     </div>
 
@@ -456,59 +516,98 @@ bindHold(document.getElementById('btnRight'), ()=>input.right=true, ()=>input.ri
 bindHold(document.getElementById('btnJump'), ()=>input.jump=true, ()=>{input.jump=false; input.jumpHeld=false;});
 
 /* ---------------------------------------------------------------
-   スマホ等タッチ端末むけの操作（フローティング仮想スティック方式）
+   全画面表示ボタン（PC/スマホ共通）
+   ・YouTubeのように、ボタン一つで全画面表示に切り替える。
+   ・全画面化と同時に、対応している端末では横向き固定を試みる
+     (Android Chrome等)。iOS Safariは画面回転ロックAPI自体が
+     無いため、その場合は下のCSS(@media (orientation:portrait))で
+     疑似的に画面を90度回転させて横画面らしく見せる。
+--------------------------------------------------------------- */
+const fsBtn = document.getElementById('fsBtn');
+function isFullscreenNow(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+async function enterFullscreen(){
+  const el = document.documentElement;
+  try{
+    if(el.requestFullscreen) await el.requestFullscreen();
+    else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  }catch(err){ /* ユーザー操作起点でない等の理由で拒否された場合は何もしない */ }
+  try{
+    if(screen.orientation && screen.orientation.lock){
+      await screen.orientation.lock('landscape');
+    }
+  }catch(err){ /* 画面回転ロック非対応(iOS等) → CSSの疑似回転にフォールバック */ }
+}
+function exitFullscreenNow(){
+  if(document.exitFullscreen) document.exitFullscreen();
+  else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+}
+fsBtn.addEventListener('click', ()=>{
+  if(isFullscreenNow()) exitFullscreenNow();
+  else enterFullscreen();
+});
+function syncFsBtnIcon(){ fsBtn.textContent = isFullscreenNow() ? '⤡' : '⛶'; }
+document.addEventListener('fullscreenchange', syncFsBtnIcon);
+document.addEventListener('webkitfullscreenchange', syncFsBtnIcon);
+
+/* ---------------------------------------------------------------
+   スマホ等タッチ端末むけの操作
    ・PC(マウス操作)ではこのブロックは何もしない。キーボード＋上のボタンのまま。
-   ・タッチ主体端末(pointer:coarse)のときだけ、ボタンとヒントを隠す。
-   ・画面(canvas)の左半分：指を置いた場所を基準に浮遊スティックが出現し、
-     そこから左右にずらした量で移動方向を決める(=PCの←→ホールドと同じ役割)。
-     「最初に押した場所」が基準になるので、画面のどこを押しても・どちらの
-     方向にも確実に動かせる(絶対座標のゾーン分けにしないことで「前にしか
-     進めない」問題を解消)。
-   ・画面の右半分：上スワイプ/タップでジャンプ、下スワイプで攻撃。
-     (Temple Runのような「タップ=ジャンプ、スワイプ=アクション」に寄せた)
+   ・タッチ主体端末(pointer:coarse)のときだけ、ボタンとヒントを隠し、
+     代わりに以下を表示する。
+       - 移動用の仮想スティック(左下)：押していないときも円が常に見える
+         位置に置いておき、指を置くとその場所にスッと移動する。
+         「最初に押した場所」を基準に左右どちらにずらしたかで移動方向を
+         決めるので、画面のどこを押しても・どちらの方向にも確実に動かせる。
+       - ジャンプ／ファイヤーブレス(右下)：色とアイコンをはっきり分けた
+         専用ボタン。スワイプ判定に頼らず、押した瞬間に確実に反応する。
    ・canvasの上にはオーバーレイ(タイトル/ゲームオーバー/クリア画面)が重なって
      おり、表示中はオーバーレイがタッチを受け取る(canvasには届かない)ので、
-     ここで拾うタッチは常に「プレイ中の画面操作」だけになる。
+     移動スティックが拾うタッチは常に「プレイ中の画面操作」だけになる。
 --------------------------------------------------------------- */
 const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
 if(isTouchDevice){
   document.getElementById('controls').classList.add('hidden');
   document.getElementById('hint').classList.add('hidden');
+  document.getElementById('touchActions').classList.remove('hidden');
+
+  // タイトル画面の説明文を、キーボード操作前提の文言からタッチ操作向けに差し替える
+  document.getElementById('titleHint').innerHTML =
+    '左下のスティックで うごく　　右下の⤴でジャンプ<br>' +
+    '🔥でファイヤーブレス！　てきの宇宙人をふんでやっつけろ！　たまごの巣にタッチでゴール！';
+
+  bindHold(document.getElementById('btnJumpTouch'), ()=>input.jump=true, ()=>{input.jump=false; input.jumpHeld=false;});
+  bindHold(document.getElementById('btnFireTouch'), ()=>input.attack=true, ()=>{input.attack=false; input.attackHeld=false;});
 
   const stick = document.getElementById('touchStick');
   const stickKnob = stick.querySelector('.knob');
-
-  const SWIPE_THRESHOLD = 30;  // px。この距離以上、指を上下に動かしたらスワイプとみなす
-  const STICK_DEADZONE = 12;   // px。これ未満のズレは「動かしていない」扱い
-  const STICK_MAX = 46;        // px。スティックの見た目上の可動範囲
+  const STICK_DEADZONE = 12; // px。これ未満のズレは「動かしていない」扱い
+  const STICK_MAX = 46;      // px。スティックの見た目上の可動範囲
 
   let moveTouchId = null, moveStartX = 0, moveStartY = 0;
-  let actionTouchId = null, actionStartY = 0, actionConsumed = false;
 
-  function showStick(clientX, clientY){
+  function placeStick(clientX, clientY){
     const rect = document.getElementById('stage').getBoundingClientRect();
     stick.style.left = (clientX - rect.left) + 'px';
     stick.style.top = (clientY - rect.top) + 'px';
+  }
+  // 指を置いていないときの定位置(左下寄り)。常にここにスティックが見える状態にする
+  function placeStickAtRest(){
+    const rect = document.getElementById('stage').getBoundingClientRect();
+    placeStick(rect.left + rect.width * 0.20, rect.top + rect.height * 0.72);
     stickKnob.style.transform = '';
-    stick.classList.remove('hidden');
   }
   function moveStickKnob(dx, dy){
     const dist = Math.min(STICK_MAX, Math.hypot(dx, dy));
     const ang = Math.atan2(dy, dx);
     stickKnob.style.transform = `translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px)`;
   }
-  function hideStick(){ stick.classList.add('hidden'); }
 
-  // ボタン操作と同じ「押す→離す」を短時間で自動的に行い、ジャンプ/攻撃を1回分だけ発生させる
-  function triggerJump(){
-    input.jump = true;
-    setTimeout(()=>{ input.jump = false; input.jumpHeld = false; }, 80);
-  }
-  function triggerAttack(){
-    input.attack = true;
-    setTimeout(()=>{ input.attack = false; input.attackHeld = false; }, 80);
-  }
+  stick.classList.remove('hidden');
+  placeStickAtRest();
+  window.addEventListener('resize', ()=>{ if(moveTouchId === null) placeStickAtRest(); });
 
   canvas.addEventListener('touchstart', e=>{
     e.preventDefault();
@@ -518,11 +617,8 @@ if(isTouchDevice){
       if(isLeftSide && moveTouchId === null){
         moveTouchId = t.identifier;
         moveStartX = t.clientX; moveStartY = t.clientY;
-        showStick(t.clientX, t.clientY);
-      } else if(!isLeftSide && actionTouchId === null){
-        actionTouchId = t.identifier;
-        actionStartY = t.clientY;
-        actionConsumed = false;
+        placeStick(t.clientX, t.clientY);
+        stickKnob.style.transform = '';
       }
     }
   }, {passive:false});
@@ -536,10 +632,6 @@ if(isTouchDevice){
         moveStickKnob(dx, dy);
         input.left = dx < -STICK_DEADZONE;
         input.right = dx > STICK_DEADZONE;
-      } else if(t.identifier === actionTouchId && !actionConsumed){
-        const dy = t.clientY - actionStartY;
-        if(dy < -SWIPE_THRESHOLD){ triggerJump(); actionConsumed = true; }
-        else if(dy > SWIPE_THRESHOLD){ triggerAttack(); actionConsumed = true; }
       }
     }
   }, {passive:false});
@@ -550,11 +642,7 @@ if(isTouchDevice){
       if(t.identifier === moveTouchId){
         moveTouchId = null;
         input.left = false; input.right = false;
-        hideStick();
-      } else if(t.identifier === actionTouchId){
-        // スワイプせずタップだけで離した場合は、タップ=ジャンプとして扱う
-        if(!actionConsumed) triggerJump();
-        actionTouchId = null;
+        placeStickAtRest(); // 離したら定位置に戻す(消さない)
       }
     }
   }
