@@ -476,8 +476,20 @@ ul {
 }
 
 @media (max-width: 640px) {
+  /* スマホでは画面幅いっぱい(フルブリード)まで広げて、ゲーム画面を最大限大きく表示する */
+  .game-embed {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    border-left: 0;
+    border-right: 0;
+  }
+
   .game-embed iframe {
-    height: 520px;
+    /* 高さは固定値ではなく、ゲーム内部のアスペクト比(960:540)に合わせて自動計算する。
+       これで上下に無駄な余白ができず、横幅いっぱいに合わせて最大の大きさで表示される。 */
+    height: auto;
+    aspect-ratio: 960 / 540;
   }
 }
 

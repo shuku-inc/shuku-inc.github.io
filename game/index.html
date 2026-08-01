@@ -17,7 +17,7 @@
   }
   *{ box-sizing:border-box; }
   html,body{
-    margin:0; padding:0; height:100%;
+    margin:0; padding:0; width:100%; height:100%;
     background:var(--bg-deep);
     color:#fff;
     font-family:"Courier New", "MS Gothic", monospace;
@@ -93,6 +93,30 @@
   }
   .padBtn:active{ transform:translateY(3px); box-shadow:0 1px 0 #000; }
   #hint{ font-size:11px; color:#8a91c4; letter-spacing:1px; }
+
+  /* タッチ操作時に表示する、指に追従する仮想スティック(移動用)の見た目 */
+  #touchStick{
+    position:absolute; width:110px; height:110px;
+    margin-left:-55px; margin-top:-55px;
+    border-radius:50%;
+    border:3px solid rgba(255,255,255,.5);
+    background:rgba(0,0,0,.25);
+    pointer-events:none; /* 触っても反応させない(裏のcanvasにタッチを渡すため) */
+    z-index:50;
+  }
+  #touchStick .knob{
+    position:absolute; left:50%; top:50%;
+    width:46px; height:46px;
+    margin-left:-23px; margin-top:-23px;
+    border-radius:50%;
+    background:rgba(255,255,255,.7);
+  }
+
+  /* スマホ幅では見出しを消して、その分ゲーム画面(#stage)を大きく表示する */
+  @media (max-width:640px){
+    h1{ display:none; }
+    #app{ padding:4px; gap:6px; }
+  }
 </style>
 </head>
 <body>
@@ -100,6 +124,7 @@
   <h1>★ きょうりゅうの島 ★</h1>
   <div id="stage">
     <canvas id="game" width="960" height="540"></canvas>
+    <div id="touchStick" class="hidden"><div class="knob"></div></div>
 
     <div id="titleScreen" class="overlay">
       <h2>きょうりゅうアドベンチャー</h2>
@@ -147,12 +172,12 @@ const VW = canvas.width, VH = canvas.height; // 画面サイズ(内部解像度)
    ▼▼▼ CONFIG：物理・プレイヤーの基本パラメータ（いじって遊びやすい）▼▼▼
 --------------------------------------------------------------- */
 const CONFIG = {
-  GRAVITY: 0.55,
-  MAX_FALL_SPEED: 14,
+  GRAVITY: 0.7,          // 落下の重さ。上げると「ふんわり」感が減りキビキビ落ちる
+  MAX_FALL_SPEED: 15,
   MOVE_ACCEL: 0.6,
   MOVE_MAX: 4.6,
   FRICTION: 0.75,
-  JUMP_POWER: 12.2,
+  JUMP_POWER: 15,         // ジャンプの初速。大きいほど高く跳べる(以前は12.2)
   PLAYER_LIVES: 3,
   TIME_LIMIT: 200,       // 秒
   GROUND_Y: 460,         // 地面の表面のy座標
@@ -431,13 +456,18 @@ bindHold(document.getElementById('btnRight'), ()=>input.right=true, ()=>input.ri
 bindHold(document.getElementById('btnJump'), ()=>input.jump=true, ()=>{input.jump=false; input.jumpHeld=false;});
 
 /* ---------------------------------------------------------------
-   スマホ等タッチ端末むけのジェスチャー操作
+   スマホ等タッチ端末むけの操作（フローティング仮想スティック方式）
    ・PC(マウス操作)ではこのブロックは何もしない。キーボード＋上のボタンのまま。
-   ・タッチ主体端末(pointer:coarse)のときだけ、ボタンとヒントを隠し、
-     canvas自体を「左右ホールドで移動／上スワイプでジャンプ／下スワイプで攻撃」の
-     ジェスチャー領域にする。
-     canvasの上にはオーバーレイ(タイトル/ゲームオーバー/クリア画面)が重なっており、
-     表示中はオーバーレイがタッチを受け取る(canvasには届かない)ので、
+   ・タッチ主体端末(pointer:coarse)のときだけ、ボタンとヒントを隠す。
+   ・画面(canvas)の左半分：指を置いた場所を基準に浮遊スティックが出現し、
+     そこから左右にずらした量で移動方向を決める(=PCの←→ホールドと同じ役割)。
+     「最初に押した場所」が基準になるので、画面のどこを押しても・どちらの
+     方向にも確実に動かせる(絶対座標のゾーン分けにしないことで「前にしか
+     進めない」問題を解消)。
+   ・画面の右半分：上スワイプ/タップでジャンプ、下スワイプで攻撃。
+     (Temple Runのような「タップ=ジャンプ、スワイプ=アクション」に寄せた)
+   ・canvasの上にはオーバーレイ(タイトル/ゲームオーバー/クリア画面)が重なって
+     おり、表示中はオーバーレイがタッチを受け取る(canvasには届かない)ので、
      ここで拾うタッチは常に「プレイ中の画面操作」だけになる。
 --------------------------------------------------------------- */
 const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
@@ -446,16 +476,29 @@ if(isTouchDevice){
   document.getElementById('controls').classList.add('hidden');
   document.getElementById('hint').classList.add('hidden');
 
-  const SWIPE_THRESHOLD = 40; // px。この距離以上、指を上下に動かしたらスワイプとみなす
-  const touchStates = new Map(); // Touch.identifier -> {zone, startY, consumed}
+  const stick = document.getElementById('touchStick');
+  const stickKnob = stick.querySelector('.knob');
 
-  // 現在押されているタッチの左右ゾーンから、移動入力をまとめて再計算する
-  function recalcMoveInput(){
-    let left = false, right = false;
-    touchStates.forEach(st => { if(st.zone === 'left') left = true; if(st.zone === 'right') right = true; });
-    input.left = left;
-    input.right = right;
+  const SWIPE_THRESHOLD = 30;  // px。この距離以上、指を上下に動かしたらスワイプとみなす
+  const STICK_DEADZONE = 12;   // px。これ未満のズレは「動かしていない」扱い
+  const STICK_MAX = 46;        // px。スティックの見た目上の可動範囲
+
+  let moveTouchId = null, moveStartX = 0, moveStartY = 0;
+  let actionTouchId = null, actionStartY = 0, actionConsumed = false;
+
+  function showStick(clientX, clientY){
+    const rect = document.getElementById('stage').getBoundingClientRect();
+    stick.style.left = (clientX - rect.left) + 'px';
+    stick.style.top = (clientY - rect.top) + 'px';
+    stickKnob.style.transform = '';
+    stick.classList.remove('hidden');
   }
+  function moveStickKnob(dx, dy){
+    const dist = Math.min(STICK_MAX, Math.hypot(dx, dy));
+    const ang = Math.atan2(dy, dx);
+    stickKnob.style.transform = `translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px)`;
+  }
+  function hideStick(){ stick.classList.add('hidden'); }
 
   // ボタン操作と同じ「押す→離す」を短時間で自動的に行い、ジャンプ/攻撃を1回分だけ発生させる
   function triggerJump(){
@@ -471,27 +514,49 @@ if(isTouchDevice){
     e.preventDefault();
     const rect = canvas.getBoundingClientRect();
     for(const t of e.changedTouches){
-      const zone = (t.clientX - rect.left) < rect.width/2 ? 'left' : 'right';
-      touchStates.set(t.identifier, { zone, startY: t.clientY, consumed: false });
+      const isLeftSide = (t.clientX - rect.left) < rect.width/2;
+      if(isLeftSide && moveTouchId === null){
+        moveTouchId = t.identifier;
+        moveStartX = t.clientX; moveStartY = t.clientY;
+        showStick(t.clientX, t.clientY);
+      } else if(!isLeftSide && actionTouchId === null){
+        actionTouchId = t.identifier;
+        actionStartY = t.clientY;
+        actionConsumed = false;
+      }
     }
-    recalcMoveInput();
   }, {passive:false});
 
   canvas.addEventListener('touchmove', e=>{
     e.preventDefault();
     for(const t of e.changedTouches){
-      const st = touchStates.get(t.identifier);
-      if(!st || st.consumed) continue;
-      const dy = t.clientY - st.startY;
-      if(dy < -SWIPE_THRESHOLD){ triggerJump(); st.consumed = true; }
-      else if(dy > SWIPE_THRESHOLD){ triggerAttack(); st.consumed = true; }
+      if(t.identifier === moveTouchId){
+        const dx = t.clientX - moveStartX;
+        const dy = t.clientY - moveStartY;
+        moveStickKnob(dx, dy);
+        input.left = dx < -STICK_DEADZONE;
+        input.right = dx > STICK_DEADZONE;
+      } else if(t.identifier === actionTouchId && !actionConsumed){
+        const dy = t.clientY - actionStartY;
+        if(dy < -SWIPE_THRESHOLD){ triggerJump(); actionConsumed = true; }
+        else if(dy > SWIPE_THRESHOLD){ triggerAttack(); actionConsumed = true; }
+      }
     }
   }, {passive:false});
 
   function endTouch(e){
     e.preventDefault();
-    for(const t of e.changedTouches){ touchStates.delete(t.identifier); }
-    recalcMoveInput();
+    for(const t of e.changedTouches){
+      if(t.identifier === moveTouchId){
+        moveTouchId = null;
+        input.left = false; input.right = false;
+        hideStick();
+      } else if(t.identifier === actionTouchId){
+        // スワイプせずタップだけで離した場合は、タップ=ジャンプとして扱う
+        if(!actionConsumed) triggerJump();
+        actionTouchId = null;
+      }
+    }
   }
   canvas.addEventListener('touchend', endTouch, {passive:false});
   canvas.addEventListener('touchcancel', endTouch, {passive:false});
