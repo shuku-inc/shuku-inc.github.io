@@ -475,25 +475,21 @@ ul {
   border: 0;
 }
 
-/* スマホ版ゲームは調整中のため、通常は非表示にしておく案内メッセージ。
-   (下のmedia queryでスマホ幅のときだけ.game-embedと表示を入れ替える) */
-.game-embed-mobile-notice {
-  display: none;
-}
-
 @media (max-width: 640px) {
-  /* スマホでは埋め込みゲームの代わりに案内文を表示する(ゲームが未完成のため) */
+  /* スマホでは画面幅いっぱい(フルブリード)まで広げて、ゲーム画面を最大限大きく表示する */
   .game-embed {
-    display: none;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    border-left: 0;
+    border-right: 0;
   }
 
-  .game-embed-mobile-notice {
-    display: block;
-    border: 1px solid var(--color-gray);
-    padding: var(--space-5) var(--space-4);
-    text-align: center;
-    font-size: 0.95rem;
-    line-height: 1.8;
+  .game-embed iframe {
+    /* 高さは固定値ではなく、ゲーム内部のアスペクト比(960:540)に合わせて自動計算する。
+       これで上下に無駄な余白ができず、横幅いっぱいに合わせて最大の大きさで表示される。 */
+    height: auto;
+    aspect-ratio: 960 / 540;
   }
 }
 
