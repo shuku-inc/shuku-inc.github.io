@@ -662,7 +662,8 @@ if(isTouchDevice){
   }
   function screenDeltaToLocal(dxScreen, dyScreen){
     if(!isRotatedNow()) return { x: dxScreen, y: dyScreen };
-    return { x: -dyScreen, y: dxScreen };
+    // 前回は逆向きの90度回転を使っていたため左右が逆になっていた。回転方向を反転する。
+    return { x: dyScreen, y: -dxScreen };
   }
 
   stickZone.addEventListener('touchstart', e=>{
