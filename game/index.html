@@ -97,18 +97,33 @@
   .padBtn:active{ transform:translateY(3px); box-shadow:0 1px 0 #000; }
   #hint{ font-size:11px; color:#8a91c4; letter-spacing:1px; }
 
-  /* 移動用の仮想スティック。常に円が見えている状態にし(押していないときは
-     決まった位置に置く)、指を置くとその位置にスッと移動する。
+  /* タッチ操作専用の操作バー。ゲーム画面(#stage)の「下」に専用の帯として
+     常に確保しておき、恐竜や地面が描かれるゲーム画面とは重ならない、
+     常にはっきり見える場所にコントローラーを配置する。
+     (以前はcanvasの上に半透明で重ねていたが、横画面時に地面と被って
+     見えにくいという指摘があったため、専用スペースに変更した) */
+  #touchControlsBar{
+    display:flex; align-items:center; justify-content:space-between;
+    width:100%; max-width:960px; height:96px; /* JS側のBAR_H定数と合わせること */
+    padding:0 18px;
+    background:var(--panel);
+    border:3px solid var(--line);
+    border-top:none;
+  }
+
+  /* 移動用の仮想スティック。バー内の決まった位置に常に円が見えている状態にし、
+     指を置くとその場で操作でき、指の動きに合わせてノブ(中の丸)だけが動く。
      大きさはジャンプ/ファイヤーボタン(.actionBtn)と統一(66px)。 */
+  #touchStickZone{
+    position:relative; width:88px; height:88px;
+    display:flex; align-items:center; justify-content:center;
+  }
   #touchStick{
-    position:absolute; width:66px; height:66px;
-    margin-left:-33px; margin-top:-33px;
+    position:relative; width:66px; height:66px;
     border-radius:50%;
     border:3px solid rgba(255,255,255,.55);
     background:rgba(0,0,0,.25);
-    pointer-events:none; /* 触っても反応させない(裏のcanvasにタッチを渡すため) */
-    z-index:50;
-    transition:left .12s ease, top .12s ease;
+    pointer-events:none; /* 触っても反応させない(タッチはtouchStickZone側で拾う) */
   }
   #touchStick .knob{
     position:absolute; left:50%; top:50%;
@@ -119,12 +134,10 @@
     transition:transform .08s ease;
   }
 
-  /* ジャンプ／ファイヤーブレスの操作ボタン(スマホ用)。右下にまとめて配置し、
-     色とアイコンをはっきり分けてどちらのボタンか一目でわかるようにする。 */
+  /* ジャンプ／ファイヤーブレスの操作ボタン(スマホ用)。バー内の右側にまとめて
+     配置し、色とアイコンをはっきり分けてどちらのボタンか一目でわかるようにする。 */
   #touchActions{
-    position:absolute; right:14px; bottom:14px;
-    display:flex; align-items:flex-end; gap:14px;
-    z-index:50;
+    display:flex; align-items:center; gap:14px;
   }
   .actionBtn{
     width:66px; height:66px; border-radius:50%;
@@ -153,12 +166,17 @@
   }
   #fsBtn:active{ transform:translateY(1px); }
 
-  /* スマホ幅では見出しを消して、その分ゲーム画面(#stage)を大きく表示する */
+  /* スマホ幅では見出しを消して、その分ゲーム画面(#stage)を大きく表示する。
+     横画面(幅が640pxを超える)でも同じ調整が必要なため、幅だけでなく
+     タッチ端末かどうか(html.touch-ui、JS側で付与)でも判定する。 */
   @media (max-width:640px){
     h1{ display:none; }
     #app{ padding:4px; gap:6px; }
     .overlay{ padding:14px; }
   }
+  html.touch-ui h1{ display:none; }
+  html.touch-ui #app{ padding:4px; gap:6px; }
+  html.touch-ui .overlay{ padding:14px; }
 
   /* 全画面表示になったとき、端末が縦向きのままなら(=iOS等で画面回転ロックが
      使えない場合)、CSSの回転で疑似的に横画面表示にする。
@@ -181,11 +199,6 @@
   <h1>★ きょうりゅうの島 ★</h1>
   <div id="stage">
     <canvas id="game" width="960" height="540"></canvas>
-    <div id="touchStick" class="hidden"><div class="knob"></div></div>
-    <div id="touchActions" class="hidden">
-      <div class="actionBtn fire" id="btnFireTouch" title="ファイヤーブレス">🔥</div>
-      <div class="actionBtn" id="btnJumpTouch" title="ジャンプ">⤴</div>
-    </div>
     <button type="button" id="fsBtn" title="全画面表示">⛶</button>
 
     <div id="titleScreen" class="overlay">
@@ -204,6 +217,18 @@
       <h2>STAGE CLEAR!</h2>
       <p id="clearScore"></p>
       <button class="btn" id="againBtn">もういちど あそぶ</button>
+    </div>
+  </div>
+
+  <!-- タッチ操作専用の操作バー。ゲーム画面(#stage)の下に専用の帯として確保し、
+       恐竜や地面と重ならない、常にはっきり見える場所にコントローラーを置く。 -->
+  <div id="touchControlsBar" class="hidden">
+    <div id="touchStickZone">
+      <div id="touchStick"><div class="knob"></div></div>
+    </div>
+    <div id="touchActions">
+      <div class="actionBtn fire hidden" id="btnFireTouch" title="ファイヤーブレス">🔥</div>
+      <div class="actionBtn" id="btnJumpTouch" title="ジャンプ">⤴</div>
     </div>
   </div>
 
@@ -548,6 +573,8 @@ function setPseudoFullscreen(on){
   document.documentElement.classList.toggle('pseudo-fullscreen', on);
   notifyParentFullscreen(on);
   syncFsBtnIcon();
+  // 回転・全画面化のCSSが反映されるのを少し待ってから、ゲーム画面のサイズを再計算する
+  if(window.__fitStageSize) setTimeout(window.__fitStageSize, 60);
 
   if(on){
     // ブラウザ標準のFullscreen APIが使える環境ではあわせて呼んでおく(失敗しても無視)
@@ -595,6 +622,9 @@ const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').m
 let syncTouchControlsVisibility = null; // タッチ端末のときだけ中身が入る(下で代入)。毎フレーム呼び出す
 
 if(isTouchDevice){
+  // 幅640px超の横画面でもh1非表示・余白縮小が効くように、幅だけに頼らずクラスでも制御する
+  document.documentElement.classList.add('touch-ui');
+
   document.getElementById('controls').classList.add('hidden');
   document.getElementById('hint').classList.add('hidden');
   // タッチ操作用UI(スティック/ジャンプ/ファイヤー)は、タイトル画面の間は隠しておき
@@ -608,58 +638,30 @@ if(isTouchDevice){
   bindHold(document.getElementById('btnJumpTouch'), ()=>input.jump=true, ()=>{input.jump=false; input.jumpHeld=false;});
   bindHold(document.getElementById('btnFireTouch'), ()=>input.attack=true, ()=>{input.attack=false; input.attackHeld=false;});
 
-  const stick = document.getElementById('touchStick');
-  const stickKnob = stick.querySelector('.knob');
+  const stickZone = document.getElementById('touchStickZone');
+  const stickKnob = document.querySelector('#touchStick .knob');
   const STICK_DEADZONE = 12; // px。これ未満のズレは「動かしていない」扱い
-  const STICK_MAX = 18;      // px。スティックの見た目上の可動範囲(リング縮小に合わせて調整)
+  const STICK_MAX = 18;      // px。スティックの見た目上の可動範囲
 
   let moveTouchId = null, moveStartX = 0, moveStartY = 0;
 
-  function placeStick(clientX, clientY){
-    const rect = document.getElementById('stage').getBoundingClientRect();
-    stick.style.left = (clientX - rect.left) + 'px';
-    stick.style.top = (clientY - rect.top) + 'px';
-  }
-  // 指を置いていないときの定位置(左下寄り)。常にここにスティックが見える状態にする
-  function placeStickAtRest(){
-    const rect = document.getElementById('stage').getBoundingClientRect();
-    placeStick(rect.left + rect.width * 0.20, rect.top + rect.height * 0.72);
-    stickKnob.style.transform = '';
-  }
   function moveStickKnob(dx, dy){
     const dist = Math.min(STICK_MAX, Math.hypot(dx, dy));
     const ang = Math.atan2(dy, dx);
     stickKnob.style.transform = `translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px)`;
   }
+  function resetStickKnob(){ stickKnob.style.transform = ''; }
 
-  placeStickAtRest(); // 表示前の位置決めだけ先にしておく(表示自体はまだしない)
-  window.addEventListener('resize', ()=>{ if(moveTouchId === null) placeStickAtRest(); });
-
-  // プレイ中(state==='playing')だけスティック/ジャンプボタンを表示し、
-  // ファイヤーボタンはさらに「ファイヤーブレスを取得した後(player.hasFire)」だけ表示する。
-  // 状態が毎フレーム変わりうるので、メインループから毎フレーム呼び出して同期する。
-  syncTouchControlsVisibility = function(){
-    const playing = (state === 'playing');
-    stick.classList.toggle('hidden', !playing);
-    document.getElementById('touchActions').classList.toggle('hidden', !playing);
-    document.getElementById('btnFireTouch').classList.toggle('hidden', !player.hasFire);
-  };
-
-  canvas.addEventListener('touchstart', e=>{
+  stickZone.addEventListener('touchstart', e=>{
     e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    for(const t of e.changedTouches){
-      const isLeftSide = (t.clientX - rect.left) < rect.width/2;
-      if(isLeftSide && moveTouchId === null){
-        moveTouchId = t.identifier;
-        moveStartX = t.clientX; moveStartY = t.clientY;
-        placeStick(t.clientX, t.clientY);
-        stickKnob.style.transform = '';
-      }
-    }
+    if(moveTouchId !== null) return; // 既に1本追跡中なら無視(2本目以降は無効)
+    const t = e.changedTouches[0];
+    moveTouchId = t.identifier;
+    moveStartX = t.clientX; moveStartY = t.clientY;
+    resetStickKnob();
   }, {passive:false});
 
-  canvas.addEventListener('touchmove', e=>{
+  stickZone.addEventListener('touchmove', e=>{
     e.preventDefault();
     for(const t of e.changedTouches){
       if(t.identifier === moveTouchId){
@@ -672,18 +674,65 @@ if(isTouchDevice){
     }
   }, {passive:false});
 
-  function endTouch(e){
+  function endStickTouch(e){
     e.preventDefault();
     for(const t of e.changedTouches){
       if(t.identifier === moveTouchId){
         moveTouchId = null;
         input.left = false; input.right = false;
-        placeStickAtRest(); // 離したら定位置に戻す(消さない)
+        resetStickKnob();
       }
     }
   }
-  canvas.addEventListener('touchend', endTouch, {passive:false});
-  canvas.addEventListener('touchcancel', endTouch, {passive:false});
+  stickZone.addEventListener('touchend', endStickTouch, {passive:false});
+  stickZone.addEventListener('touchcancel', endStickTouch, {passive:false});
+
+  /* ---------------------------------------------------------------
+     ゲーム画面(#stage)の大きさを、幅だけでなく「高さ」の制約も
+     考慮して動的に計算する。
+     横画面(全画面時のCSS回転含む)では、幅基準でstageサイズを決めると
+     高さが画面をはみ出し、下の操作バーが見えなくなってしまうため、
+     幅と高さ両方の制約のうち小さい方に合わせてstageの幅を決める。
+  --------------------------------------------------------------- */
+  const BAR_H = 96; // #touchControlsBarの高さ(CSSの値と合わせること)
+
+  function fitStageSize(){
+    // 全画面(疑似含む)かつ縦向きビューポートのときは、CSSで90度回転しているので
+    // 実際に使える幅と高さが入れ替わる
+    const rotated = document.documentElement.classList.contains('pseudo-fullscreen')
+      && window.matchMedia('(orientation:portrait)').matches;
+    let availW = document.body.clientWidth;
+    let availH = document.body.clientHeight;
+    if(rotated){ const t = availW; availW = availH; availH = t; }
+
+    const barVisible = !document.getElementById('touchControlsBar').classList.contains('hidden');
+    const barH = barVisible ? BAR_H : 0;
+    const usableH = Math.max(120, availH - barH - 24); // #appのpadding/gap分をおおまかに差し引く(安全側に少し多めに)
+    const usableW = Math.max(200, availW - 16);
+
+    const widthFromHeight = usableH * (960 / 540);
+    const finalWidth = Math.min(usableW, widthFromHeight, 960);
+    document.getElementById('stage').style.width = finalWidth + 'px';
+  }
+
+  fitStageSize();
+  window.addEventListener('resize', fitStageSize);
+  window.addEventListener('orientationchange', ()=> setTimeout(fitStageSize, 120));
+  window.__fitStageSize = fitStageSize; // 全画面切り替え側(setPseudoFullscreen)から再計算できるように
+
+  // プレイ中(state==='playing')だけ操作バーを表示し、
+  // ファイヤーボタンはさらに「ファイヤーブレスを取得した後(player.hasFire)」だけ表示する。
+  // 状態が毎フレーム変わりうるので、メインループから毎フレーム呼び出して同期する。
+  let lastBarVisible = null;
+  syncTouchControlsVisibility = function(){
+    const playing = (state === 'playing');
+    document.getElementById('touchControlsBar').classList.toggle('hidden', !playing);
+    document.getElementById('btnFireTouch').classList.toggle('hidden', !player.hasFire);
+    if(playing !== lastBarVisible){
+      lastBarVisible = playing;
+      fitStageSize(); // バーの表示有無でstageの使える高さが変わるため再計算する
+    }
+  };
 }
 
 /* ---------------------------------------------------------------
