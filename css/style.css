@@ -558,13 +558,18 @@ body.game-fullscreen-lock {
 }
 
 .profile__photo {
-  border: 1px solid var(--color-gray);
+  width: 220px;
+  height: 220px;
+  margin: 0 auto;
+  border: 1px solid var(--color-gold);
+  border-radius: 50%;
   overflow: hidden;
 }
 
 .profile__photo img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
 }
 
 .profile__name {
@@ -741,12 +746,11 @@ body.game-fullscreen-lock {
     grid-template-columns: 1fr;
   }
 
-  .profile__photo {
-    max-width: 240px;
-    margin: 0 auto;
+  .profile__name {
+    text-align: center;
   }
 
-  .profile__name {
+  .profile__role {
     text-align: center;
   }
 }
