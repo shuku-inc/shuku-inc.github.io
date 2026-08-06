@@ -743,6 +743,11 @@ body.game-fullscreen-lock {
 
   .profile__photo {
     max-width: 240px;
+    margin: 0 auto;
+  }
+
+  .profile__name {
+    text-align: center;
   }
 }
 
