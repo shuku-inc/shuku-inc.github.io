@@ -652,6 +652,19 @@ if(isTouchDevice){
   }
   function resetStickKnob(){ stickKnob.style.transform = ''; }
 
+  // 全画面(疑似含む)でCSSにより画面が90度回転しているときは、指の移動方向(実画面
+  // 座標)とゲーム内の左右(#appのローカル座標)がズレる。回転中かどうかを判定し、
+  // 回転しているときだけ「実画面での上下移動」を「ゲーム内の左右」に読み替える。
+  // (実機で検証したところ、回転時は上方向へのドラッグが右移動になる関係だった)
+  function isRotatedNow(){
+    return document.documentElement.classList.contains('pseudo-fullscreen')
+      && window.matchMedia('(orientation:portrait)').matches;
+  }
+  function screenDeltaToLocal(dxScreen, dyScreen){
+    if(!isRotatedNow()) return { x: dxScreen, y: dyScreen };
+    return { x: -dyScreen, y: dxScreen };
+  }
+
   stickZone.addEventListener('touchstart', e=>{
     e.preventDefault();
     if(moveTouchId !== null) return; // 既に1本追跡中なら無視(2本目以降は無効)
@@ -665,11 +678,12 @@ if(isTouchDevice){
     e.preventDefault();
     for(const t of e.changedTouches){
       if(t.identifier === moveTouchId){
-        const dx = t.clientX - moveStartX;
-        const dy = t.clientY - moveStartY;
-        moveStickKnob(dx, dy);
-        input.left = dx < -STICK_DEADZONE;
-        input.right = dx > STICK_DEADZONE;
+        const dxScreen = t.clientX - moveStartX;
+        const dyScreen = t.clientY - moveStartY;
+        const local = screenDeltaToLocal(dxScreen, dyScreen);
+        moveStickKnob(local.x, local.y);
+        input.left = local.x < -STICK_DEADZONE;
+        input.right = local.x > STICK_DEADZONE;
       }
     }
   }, {passive:false});
