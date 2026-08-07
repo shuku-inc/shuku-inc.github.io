@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" role="img" aria-label="申込み・チェックリスト">
+  <rect x="5" y="4" width="14" height="17" rx="1.5" stroke="#0D233A" stroke-width="1.5"/>
+  <rect x="9" y="2.3" width="6" height="3.4" rx="1" stroke="#0D233A" stroke-width="1.4" fill="#FAF9F6"/>
+  <path d="M8.5 13L11 15.5L16 10" stroke="#C7A86D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

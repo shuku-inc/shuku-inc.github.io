@@ -454,6 +454,11 @@ ul {
   font-size: 1.1rem;
 }
 
+.cta-card__icon {
+  width: 30px;
+  height: 30px;
+}
+
 .cta-card img.qr {
   width: 140px;
   height: 140px;

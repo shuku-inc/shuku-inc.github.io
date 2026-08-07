@@ -1,0 +1,29 @@
+# ----------------------------------------------------------------
+# アイコン/イラスト素材 (assets/illustrations)
+# サイトやスライド用にまとめて多数生成する運用のため、リポジトリの容量を
+# 圧迫させないよう既定では追跡しない。
+# ただし、サイト側のHTML/CSSから実際に読み込んでいるファイルは、push しないと
+# GitHub Pages 上で表示されないため例外的に追跡対象にする。
+# 新しいアイコン/イラストをサイトで使うようになったら、このファイルにも
+# 「!assets/illustrations/...」の形で追記すること。
+# ----------------------------------------------------------------
+assets/illustrations/icons/*
+!assets/illustrations/icons/icon-calendar.svg
+!assets/illustrations/icons/icon-map-pin.svg
+!assets/illustrations/icons/icon-people.svg
+!assets/illustrations/icons/icon-yen.svg
+!assets/illustrations/icons/icon-backpack.svg
+!assets/illustrations/icons/icon-id-card.svg
+!assets/illustrations/icons/icon-monitor.svg
+!assets/illustrations/icons/icon-alert.svg
+!assets/illustrations/icons/icon-clipboard-check.svg
+!assets/illustrations/icons/icon-chat.svg
+!assets/illustrations/icons/icon-mail.svg
+
+assets/illustrations/illust-*.svg
+!assets/illustrations/illust-ai-conversation.svg
+
+assets/illustrations/pattern-grid.svg
+assets/illustrations/pattern-waves.svg
+assets/illustrations/pattern-dots-scatter.svg
+assets/illustrations/pattern-arc.svg
