@@ -1,0 +1,86 @@
+# shuku-site の自動点検（CI）。main への push と、PR のたびに実行する。
+# 公開（GitHub Pages）は main の更新で自動に行われるので、ここが通らない変更は main に入れない（ブランチ保護で必須にする）。
+# 【初回運用】各ジョブは continue-on-error で「報告のみ」にしてある。指摘が片づいたら外して必須にする。
+name: check
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 0 * * 1" # 毎週月曜 9:00 JST: 外部リンクの死活確認
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: 書き方（HTML・CSS・JS・整形）
+    runs-on: ubuntu-latest
+    continue-on-error: true # 初回は報告のみ。指摘が片づいたら外して、必須の点検にする
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint:html
+      - run: npm run lint:css
+      - run: npm run lint:js
+      - run: npm run format:check
+
+  safety:
+    name: 安全（内部向け記述・鍵・リンク切れ）
+    runs-on: ubuntu-latest
+    continue-on-error: true # 初回は報告のみ。指摘が片づいたら外して、必須の点検にする
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/check-site.js .
+      - name: 鍵・トークンの混入（履歴を含む）
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 内部リンク（オフライン）
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --include-fragments --no-progress "**/*.html"
+          fail: true
+
+  quality:
+    name: 表示品質（アクセシビリティ・Lighthouse）
+    runs-on: ubuntu-latest
+    continue-on-error: true # 初回は報告のみ。指摘が片づいたら外して、必須の点検にする
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: アクセシビリティ（WCAG2 AA）
+        run: |
+          npm run serve &
+          npx wait-on http://localhost:8080 --timeout 30000
+          npm run test:a11y
+      - name: Lighthouse
+        run: npm run test:lighthouse
+
+  external-links:
+    name: 外部リンクの死活（毎週）
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true # 初回は報告のみ。指摘が片づいたら外して、必須の点検にする
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --max-retries 2 --accept 200,403,429 "**/*.html"
+          fail: false

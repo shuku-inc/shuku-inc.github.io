@@ -30,3 +30,7 @@ assets/illustrations/pattern-arc.svg
 
 # 内部向けの作業ルール（非公開）
 AGENTS.md
+
+# CI の道具
+node_modules/
+.lighthouseci/

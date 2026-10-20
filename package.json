@@ -1,0 +1,30 @@
+{
+  "name": "shuku-site",
+  "private": true,
+  "description": "SHUKU サイトの品質点検（公開物ではなく、開発用の道具だけ）",
+  "scripts": {
+    "lint:html": "git ls-files \"*.html\" | xargs html-validate",
+    "lint:css": "stylelint \"css/**/*.css\"",
+    "lint:js": "eslint js",
+    "format:check": "prettier --check \"**/*.{html,css,js,json,md,yml}\"",
+    "format": "prettier --write \"**/*.{html,css,js,json,md,yml}\"",
+    "check:safety": "node scripts/check-site.js .",
+    "serve": "http-server . -p 8080 -s",
+    "test:a11y": "pa11y-ci --config .pa11yci.json",
+    "test:lighthouse": "lhci autorun",
+    "lint": "npm run lint:html && npm run lint:css && npm run lint:js && npm run format:check && npm run check:safety"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@lhci/cli": "0.15.1",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "html-validate": "11.16.4",
+    "http-server": "14.1.1",
+    "pa11y-ci": "5.0.0",
+    "prettier": "3.9.10",
+    "stylelint": "17.16.0",
+    "stylelint-config-standard": "40.0.0",
+    "wait-on": "9.5.1"
+  }
+}
