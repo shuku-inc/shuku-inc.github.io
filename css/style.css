@@ -8,11 +8,10 @@
   --color-bg: #faf9f6; /* Paper White */
   --color-navy: #0d233a; /* Deep Navy */
   --color-gold: #c7a86d; /* Gold */
+  --color-gold-text: #8a6a2a; /* 明るい背景の上の金色文字用（Goldのままだとコントラスト比が2.2:1しかなく読みにくいため、4.5:1以上に暗くした） */
   --color-gray: #e9e9e9; /* Light Gray */
-
   --font-jp: "Noto Sans JP", "Hiragino Sans", sans-serif;
-  --font-en: "Inter", "Helvetica Neue", Arial, sans-serif;
-
+  --font-en: "Inter", "Helvetica Neue", arial, sans-serif;
   --space-1: 8px;
   --space-2: 16px;
   --space-3: 24px;
@@ -21,7 +20,6 @@
   --space-6: 64px;
   --space-7: 96px;
   --space-8: 128px;
-
   --max-width: 1080px;
   --transition: 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -110,7 +108,7 @@ ul {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: rgba(250, 249, 246, 0.88);
+  background: rgb(250 249 246 / 88%);
   backdrop-filter: blur(8px);
 }
 
@@ -194,6 +192,7 @@ ul {
   position: absolute;
   top: -7px;
 }
+
 .nav-toggle span::after {
   position: absolute;
   top: 7px;
@@ -214,7 +213,7 @@ ul {
   display: inline-block;
   font-size: 0.8rem;
   letter-spacing: 0.25em;
-  color: var(--color-gold);
+  color: var(--color-gold-text);
   margin-bottom: var(--space-2);
 }
 
@@ -309,7 +308,7 @@ ul {
   display: inline-block;
   font-size: 0.75rem;
   letter-spacing: 0.2em;
-  color: var(--color-gold);
+  color: var(--color-gold-text);
   border: 1px solid var(--color-gold);
   padding: 2px 10px;
   width: fit-content;
@@ -498,7 +497,7 @@ ul {
   border: 0;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   /* スマホでは画面幅いっぱい(フルブリード)まで広げて、ゲーム画面を最大限大きく表示する */
   .game-embed {
     width: 100vw;
@@ -562,6 +561,7 @@ body.game-fullscreen-lock {
   overflow: hidden;
 }
 
+/* stylelint-disable-next-line no-descending-specificity -- 地図の埋め込みとゲームの埋め込みは別の要素で、同じ要素に両方が当たることはない */
 .map-embed iframe {
   display: block;
   width: 100%;
@@ -602,7 +602,7 @@ body.game-fullscreen-lock {
 
 .profile__role {
   font-size: 0.85rem;
-  color: var(--color-gold);
+  color: var(--color-gold-text);
   letter-spacing: 0.1em;
   margin-bottom: var(--space-3);
 }
@@ -674,6 +674,7 @@ body.game-fullscreen-lock {
   margin-top: var(--space-8);
 }
 
+/* stylelint-disable-next-line no-descending-specificity -- フッターとヘッダーは別の要素で、同じ要素に両方が当たることはない */
 .site-footer .container {
   display: flex;
   flex-wrap: wrap;
@@ -689,7 +690,7 @@ body.game-fullscreen-lock {
 }
 
 .footer-copy {
-  opacity: 0.55;
+  opacity: 0.7; /* 0.55だと文字のコントラスト比が3.7:1で足りないため、4.5:1以上になる値に上げた */
   width: 100%;
   text-align: center;
   margin-top: var(--space-3);
@@ -718,6 +719,7 @@ body.game-fullscreen-lock {
 /* ------------------------------------------------------------
    スクロール演出（Apple風のフェード＆スライドイン）
    ------------------------------------------------------------ */
+/* stylelint-disable-next-line no-descending-specificity -- 対象の要素・プロパティが重ならず、順序を入れ替えても見た目は変わらない（疑似フルスクリーン用の上書きは意図して先に置いている） */
 .reveal {
   opacity: 0;
   transform: translateY(24px);
@@ -747,12 +749,15 @@ body.game-fullscreen-lock {
 .reveal-stagger.is-visible > *:nth-child(1) {
   transition-delay: 0.05s;
 }
+
 .reveal-stagger.is-visible > *:nth-child(2) {
   transition-delay: 0.15s;
 }
+
 .reveal-stagger.is-visible > *:nth-child(3) {
   transition-delay: 0.25s;
 }
+
 .reveal-stagger.is-visible > *:nth-child(4) {
   transition-delay: 0.35s;
 }
@@ -761,6 +766,7 @@ body.game-fullscreen-lock {
   html {
     scroll-behavior: auto;
   }
+
   .reveal,
   .reveal-stagger > * {
     opacity: 1;
@@ -772,7 +778,7 @@ body.game-fullscreen-lock {
 /* ------------------------------------------------------------
    レスポンシブ
    ------------------------------------------------------------ */
-@media (max-width: 860px) {
+@media (width <= 860px) {
   .info-grid,
   .cta {
     grid-template-columns: 1fr;
@@ -792,10 +798,10 @@ body.game-fullscreen-lock {
   }
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .nav-list {
     position: fixed;
-    inset: 64px 0 0 0;
+    inset: 64px 0 0;
     background: var(--color-bg);
     flex-direction: column;
     align-items: center;
@@ -821,10 +827,11 @@ body.game-fullscreen-lock {
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .section {
     padding: var(--space-6) 0;
   }
+
   .cta-card img.qr {
     width: 120px;
     height: 120px;
