@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ページが見つかりません | SHUKU</title>
+    <meta
+      name="description"
+      content="お探しのページは見つかりませんでした。SHUKUのホームへお戻りください。"
+    />
+    <meta name="robots" content="noindex" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <!-- 存在しない URL（例: /foo/bar）でも読み込めるよう、404 ページの参照はすべてルートからの絶対パスにする -->
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="/index.html" class="brand">
+          <img src="/assets/logo/shuku-logo.png" alt="" />
+          <span class="en">SHUKU</span>
+        </a>
+        <nav aria-label="メインメニュー">
+          <button
+            type="button"
+            class="nav-toggle"
+            aria-label="メニューを開く"
+            aria-expanded="false"
+          >
+            <span></span>
+          </button>
+          <ul class="nav-list">
+            <li><a href="/index.html">ホーム</a></li>
+            <li><a href="/about/index.html">組織概要</a></li>
+            <li><a href="/contact/index.html">お問い合わせ</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container">
+          <span class="section-eyebrow reveal" style="display: block">404 NOT FOUND</span>
+          <h1 class="hero__title reveal" style="font-size: clamp(1.8rem, 4vw, 2.8rem)">
+            ページが見つかりません
+          </h1>
+          <p class="section-lead text-center reveal" style="max-width: 520px">
+            お探しのページは移動したか、なくなった可能性があります。 ホームから探してみてください。
+          </p>
+          <p class="text-center reveal">
+            <a href="/index.html" class="btn btn--primary">ホームへ戻る</a>
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <nav class="footer-nav" aria-label="フッターメニュー">
+          <a href="/index.html">ホーム</a>
+          <a href="/about/index.html">組織概要</a>
+          <a href="/contact/index.html">お問い合わせ</a>
+        </nav>
+        <a href="mailto:shuku.inc.official@gmail.com" class="en">shuku.inc.official@gmail.com</a>
+        <p class="footer-copy en">&copy; 2026 SHUKU</p>
+      </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+  </body>
+</html>

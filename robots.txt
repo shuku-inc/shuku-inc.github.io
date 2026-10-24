@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://shuku-inc.github.io/sitemap.xml
